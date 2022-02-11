@@ -1,5 +1,6 @@
 from fastapi import FastAPI, WebSocket
 from fastapi.responses import HTMLResponse
+from json import JSONDecodeError
 
 app = FastAPI()
 
@@ -49,8 +50,12 @@ async def websocket_endpoint(websocket: WebSocket):
     await websocket.accept()
     counter = 0
     while True:
-        counter += 1
-        out_data = {}
-        data = await websocket.receive_text()
-        out_data[counter] = data
-        await websocket.send_json(out_data)
+        try:
+            counter += 1
+            data = await websocket.receive_json()
+            out_data = {"message_id": counter, "message_text": data}
+            await websocket.send_json(out_data)
+        except JSONDecodeError:
+            await websocket.send_text("Invalid input format. Websocket will be closed. Please reload the page.")
+            await websocket.close(code=1000, reason=None)
+
